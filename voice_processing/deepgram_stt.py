@@ -69,25 +69,25 @@ class DeepgramSTT:
         except Exception as e:
             raise RuntimeError(f"Deepgram SDK transcription error: {str(e)}")
     
-    def transcribe_file(self, file_path: str, **kwargs) -> Optional[str]:
-        """
-        Transcribe audio file to text using Deepgram SDK
-        
-        Args:
-            file_path: Path to audio file
-            **kwargs: Additional parameters for transcribe_audio
-            
-        Returns:
-            Transcribed text or None if error
-        """
-        try:
-            with open(file_path, 'rb') as audio_file:
-                audio_bytes = audio_file.read()
-            return self.transcribe_audio(audio_bytes, **kwargs)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Audio file not found: {file_path}")
-        except Exception as e:
-            raise RuntimeError(f"Error reading audio file: {str(e)}")
+   # def transcribe_file(self, file_path: str, **kwargs) -> Optional[str]:
+    #    """
+     #   Transcribe audio file to text using Deepgram SDK
+      #  
+       # Args:
+        #    file_path: Path to audio file
+         #   **kwargs: Additional parameters for transcribe_audio
+          #  
+        #Returns:
+         #   Transcribed text or None if error
+        #"""
+        #try:
+         #   with open(file_path, 'rb') as audio_file:
+          #      audio_bytes = audio_file.read()
+           # return self.transcribe_audio(audio_bytes, **kwargs)
+        #except FileNotFoundError:
+        #    raise FileNotFoundError(f"Audio file not found: {file_path}")
+        #except Exception as e:
+        #    raise RuntimeError(f"Error reading audio file: {str(e)}")
 
 
 # Convenience function for quick usage
