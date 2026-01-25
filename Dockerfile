@@ -13,8 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy requirements
 COPY requirements.txt .
 
-# Install Python dependencies (CPU-only torch to avoid huge CUDA libraries)
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application

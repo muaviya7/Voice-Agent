@@ -5,7 +5,6 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sentence_transformers import SentenceTransformer
 from typing import List, Dict
 import chromadb
 from chromadb.config import Settings
@@ -45,26 +44,44 @@ class RAGRetriever:
     """Retrieve relevant context from ChromaDB"""
     
     def __init__(self, persist_directory: str = "./db/chromadb_store", collection_name: str = "sunmarke_content"):
+        from db.chroma_manager import ChromaManager
+        import google.generativeai as genai
+        import os
+        
         self.persist_directory = persist_directory
         self.collection_name = collection_name
         
-        print("Loading embedding model...")
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
-        print("Model loaded!")
+        # Initialize Gemini for embeddings
+        genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
         
-        # Initialize ChromaDB client
-        self.client = chromadb.PersistentClient(
-            path=persist_directory,
-            settings=Settings(anonymized_telemetry=False)
-        )
+        # Initialize ChromaDB using ChromaManager
+        self.chroma_manager = ChromaManager(persist_directory, collection_name)
+        self.client = self.chroma_manager.client
+        self.collection = self.chroma_manager.collection
         
-        # Get collection
-        self.collection = self.client.get_collection(name=collection_name)
         print(f"Connected to ChromaDB collection: {collection_name}")
+        
+        # Auto-load data if collection is empty
+        self.chroma_manager.auto_load_if_empty()
+    
+
     
     def embed_query(self, query: str) -> List[float]:
-        embedding = self.model.encode(query)
-        return embedding.tolist()
+        """Generate query embedding using Gemini API"""
+        import google.generativeai as genai
+        
+        try:
+            result = genai.embed_content(
+                model="models/text-embedding-004",
+                content=query,
+                task_type="retrieval_query"
+            )
+            # Return full 768D to match new ChromaDB embeddings
+            return result['embedding']
+        except Exception as e:
+            print(f"Embedding error: {e}")
+            # Return zero vector as fallback (768D)
+            return [0.0] * 768
     
     def retrieve(self, query: str, top_k: int = 5) -> List[Dict]:
         """

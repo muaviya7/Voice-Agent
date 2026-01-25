@@ -10,10 +10,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from data_ingestion.scraper import LocalHTMLProcessor
 from data_ingestion.chunker import ContentChunker
-from sentence_transformers import SentenceTransformer
 from db.chroma_manager import ChromaManager
 import json
 from tqdm import tqdm
+import google.generativeai as genai
+import os
+from dotenv import load_dotenv
+import time
 
 
 def run_full_pipeline():
@@ -82,26 +85,57 @@ def run_full_pipeline():
     # ========================================================================
     print("\nSTEP 3: GENERATING EMBEDDINGS")
     
-    print("Loading embedding model (sentence-transformers)...")
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-    print("Model loaded successfully")
+    # Load environment for Gemini API
+    load_dotenv()
+    api_key = os.getenv('GOOGLE_API_KEY')
+    if not api_key:
+        print("ERROR: GOOGLE_API_KEY not found in environment!")
+        print("Please set your Google API key in .env file")
+        return False
+    
+    # Configure Gemini
+    genai.configure(api_key=api_key)
+    print("✅ Gemini API configured")
     
     print(f"\nGenerating embeddings for {len(all_chunks)} chunks...")
+    print("Using Gemini text-embedding-004 model (768D)")
+    
     embeddings = []
+    failed_count = 0
+    start_time = time.time()
     
-    # Generate with progress bar
-    for chunk in tqdm(all_chunks, desc="Embedding chunks"):
-        embedding = embedding_model.encode(chunk['content'])
-        embeddings.append(embedding.tolist())
+    # Generate embeddings with progress bar
+    for i, chunk in enumerate(tqdm(all_chunks, desc="Embedding chunks")):
+        try:
+            result = genai.embed_content(
+                model="models/text-embedding-004",
+                content=chunk['content'],
+                task_type="retrieval_document"
+            )
+            embeddings.append(result['embedding'])
+            
+            # Rate limiting to avoid quota issues
+            time.sleep(0.1)
+            
+        except Exception as e:
+            print(f"\nFailed chunk {i}: {e}")
+            embeddings.append([0.0] * 768)  # Zero vector fallback
+            failed_count += 1
     
-    print(f"\nGenerated {len(embeddings)} embeddings")
-    print(f"   - Embedding dimensions: {len(embeddings[0])}")
+    elapsed = time.time() - start_time
+    
+    print(f"\nGenerated {len(embeddings)} embeddings in {elapsed:.2f}s")
+    print(f"   - Embedding dimensions: 768 (Gemini)")
+    print(f"   - Speed: {len(embeddings)/elapsed:.1f} chunks/sec")
+    print(f"   - Failed embeddings: {failed_count}")
     
     # Add embeddings to chunks
     embedded_chunks = []
     for chunk, embedding in zip(all_chunks, embeddings):
         chunk_copy = chunk.copy()
         chunk_copy['embedding'] = embedding
+        chunk_copy['embedding_model'] = 'text-embedding-004'
+        chunk_copy['embedding_dim'] = 768
         embedded_chunks.append(chunk_copy)
     
     # Save embedded chunks
@@ -160,6 +194,7 @@ def run_full_pipeline():
     print(f"   - Files processed: {len(processed_data)}")
     print(f"   - Chunks created: {len(all_chunks)}")
     print(f"   - Embeddings generated: {len(embeddings)}")
+    print(f"   - Failed embeddings: {failed_count}")
     print(f"   - Documents in ChromaDB: {len(documents)}")
     
     print("\nOutput Files:")
