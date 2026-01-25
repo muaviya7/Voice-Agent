@@ -88,11 +88,24 @@ class EmbeddingGenerator:
 
 if __name__ == "__main__":
     import json
+    import os
     from pathlib import Path
-    from sentence_transformers import SentenceTransformer
+    import google.generativeai as genai
+    from dotenv import load_dotenv
     from tqdm import tqdm
     
-    print("STEP 3: GENERATING EMBEDDINGS")
+    print("STEP 3: GENERATING EMBEDDINGS WITH GEMINI")
+    
+    # Load environment
+    load_dotenv()
+    api_key = os.getenv('GOOGLE_API_KEY')
+    if not api_key:
+        print("ERROR: GOOGLE_API_KEY not found!")
+        exit(1)
+    
+    # Configure Gemini
+    genai.configure(api_key=api_key)
+    print("✅ Gemini configured")
     
     # Load chunks
     input_file = Path('data/scraped_content/sunmarke_chunks.json')
@@ -107,32 +120,39 @@ if __name__ == "__main__":
         chunks = json.load(f)
     
     print(f"Loaded {len(chunks)} chunks")
-    
-    # Load model
-    print("Loading model (all-MiniLM-L6-v2)...")
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    print("Model loaded!")
+    print("Using Gemini text-embedding-004 model (768D)")
     
     # Generate embeddings
-    print("Generating embeddings...")
-    texts = [chunk['content'] for chunk in chunks]
+    print("Generating embeddings with Gemini...")
     
     start_time = time.time()
-    batch_size = 100
     embeddings = []
+    failed_count = 0
     
-    for i in tqdm(range(0, len(texts), batch_size), desc="Embedding"):
-        batch = texts[i:i+batch_size]
-        batch_embeddings = model.encode(batch, show_progress_bar=False)
-        embeddings.extend(batch_embeddings.tolist())
+    for i, chunk in enumerate(tqdm(chunks, desc="Embedding")):
+        try:
+            result = genai.embed_content(
+                model="models/text-embedding-004",
+                content=chunk['content'],
+                task_type="retrieval_document"
+            )
+            embeddings.append(result['embedding'])
+            
+            # Rate limiting
+            time.sleep(0.1)
+            
+        except Exception as e:
+            print(f"Failed chunk {i}: {e}")
+            embeddings.append([0.0] * 768)  # Zero vector fallback
+            failed_count += 1
     
     elapsed = time.time() - start_time
     
-    # Add embeddings
+    # Add embeddings to chunks
     for chunk, embedding in zip(chunks, embeddings):
         chunk['embedding'] = embedding
-        chunk['embedding_model'] = 'all-MiniLM-L6-v2'
-        chunk['embedding_dim'] = 384
+        chunk['embedding_model'] = 'text-embedding-004'
+        chunk['embedding_dim'] = 768
     
     # Save
     output_file = Path('data/embedded_chunks/sunmarke_embedded.json')
@@ -141,12 +161,13 @@ if __name__ == "__main__":
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(chunks, f, indent=2, ensure_ascii=False)
     
-    print("EMBEDDING COMPLETE!")
-    print(f"Time: {elapsed:.2f}s ({elapsed/60:.2f} min)")
-    print(f"Speed: {len(chunks)/elapsed:.1f} chunks/sec")
-    print(f"Chunks: {len(chunks)}")
-    print(f"Dimensions: 384")
-    print(f"Saved to: {output_file}")
-    print(f"Size: {output_file.stat().st_size / (1024*1024):.2f} MB")
-    print("Next: Store in ChromaDB")
+    print(" EMBEDDING COMPLETE!")
+    print(f" Time: {elapsed:.2f}s ({elapsed/60:.2f} min)")
+    print(f" Speed: {len(chunks)/elapsed:.1f} chunks/sec")
+    print(f" Chunks: {len(chunks)}")
+    print(f" Failed: {failed_count}")
+    print(f" Dimensions: 768 (Gemini)")
+    print(f" Saved to: {output_file}")
+    print(f" Size: {output_file.stat().st_size / (1024*1024):.2f} MB")
+    print(" Next: Store in ChromaDB")
 

@@ -171,37 +171,37 @@ if __name__ == "__main__":
     input_file = Path('data/embedded_chunks/sunmarke_embedded.json')
     
     if not input_file.exists():
-        print(f"❌ ERROR: {input_file} not found!")
-        print("⚠️  Run embeddings first: python data_ingestion/embeddings.py")
+        print(f"ERROR: {input_file} not found!")
+        print(" Run embeddings first: python data_ingestion/embeddings.py")
         exit(1)
     
-    print(f"\n📂 Loading embedded chunks from: {input_file}")
+    print(f"\nLoading embedded chunks from: {input_file}")
     with open(input_file, 'r', encoding='utf-8') as f:
         chunks = json.load(f)
     
-    print(f"✅ Loaded {len(chunks)} embedded chunks")
+    print(f"Loaded {len(chunks)} embedded chunks")
     
     # Initialize ChromaDB
-    print("\n🔄 Initializing ChromaDB...")
+    print("\nInitializing ChromaDB...")
     chroma = ChromaManager(
         persist_directory="./db/chromadb_store",
         collection_name="sunmarke_content"
     )
-    print("✅ ChromaDB initialized!")
+    print("ChromaDB initialized!")
     
     # Check if collection already has data
     stats = chroma.get_collection_stats()
     if stats['total_documents'] > 0:
-        print(f"\n⚠️  Collection already has {stats['total_documents']} documents")
+        print(f"\nCollection already has {stats['total_documents']} documents")
         response = input("Reset and reload? (yes/no): ")
         if response.lower() == 'yes':
             chroma.reset_collection()
         else:
-            print("❌ Aborted. Keeping existing data.")
+            print("Aborted. Keeping existing data.")
             exit(0)
     
     # Add documents to ChromaDB
-    print("\n🔄 Adding documents to ChromaDB...")
+    print("\nAdding documents to ChromaDB...")
     start_time = time.time()
     
     total_added = chroma.add_documents(chunks)
@@ -211,13 +211,11 @@ if __name__ == "__main__":
     # Get final stats
     final_stats = chroma.get_collection_stats()
     
-    print("\n" + "=" * 60)
-    print("✅ CHROMADB STORAGE COMPLETE!")
-    print("=" * 60)
-    print(f"📦 Documents stored: {total_added}")
-    print(f"🗂️  Collection: {final_stats['collection_name']}")
-    print(f"💾 Location: {final_stats['persist_directory']}")
-    print(f"⏱️  Time: {elapsed:.2f}s")
-    print(f"📊 Speed: {total_added/elapsed:.1f} docs/sec")
-    print("\n🔜 Next: Build RAG retriever")
+    print(" CHROMADB STORAGE COMPLETE!")
+    print(f" Documents stored: {total_added}")
+    print(f"  Collection: {final_stats['collection_name']}")
+    print(f" Location: {final_stats['persist_directory']}")
+    print(f"  Time: {elapsed:.2f}s")
+    print(f" Speed: {total_added/elapsed:.1f} docs/sec")
+    print("\n Next: Build RAG retriever")
     print("=" * 60)
