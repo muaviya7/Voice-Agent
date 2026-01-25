@@ -481,7 +481,223 @@ Edit `rag/prompt_templates.py` for domain-specific instructions.
 
 ---
 
-## 🐛 Troubleshooting
+## � Cost Analysis & Economics
+
+### **Detailed Cost Breakdown Per 1,000 Queries**
+
+Based on current API pricing (January 2026) and assuming:
+- Average query: 10 words input (~15 tokens)
+- System prompt: ~500 tokens (RAG context + instructions)
+- Response output: 150 words per model (~200 tokens)
+- Voice input: 30 seconds average audio
+- TTS output: 150 words per model (3 models = 450 words total)
+
+#### **Token Analysis Per Query:**
+
+| Model | Input Tokens | Output Tokens | Total Tokens |
+|-------|-------------|---------------|--------------|
+| **Gemini 2.5** | 515 (query + system + context) | 200 (response) | 715 |
+| **DeepSeek R1** | 515 (query + system + context) | 200 (response) | 715 |
+| **Mistral 7B** | 515 (query + system + context) | 200 (response) | 715 |
+| **Total Per Query** | 1,545 input tokens | 600 output tokens | 2,145 tokens |
+
+#### **Detailed Per Single Query Costs:**
+
+| Component | Service | Input Cost | Output Cost | Usage Per Query | Cost Per Query |
+|-----------|---------|------------|-------------|-----------------|----------------|
+| **STT** | Deepgram Nova-2 | - | $0.0043/min | 0.5 min audio | $0.00215 |
+| **LLM - Gemini** | Google AI | $0.00001875/1K | $0.0075/1K | 515 in + 200 out | $0.00209 |
+| **LLM - DeepSeek** | OpenRouter | $0.00014/1K | $0.00028/1K | 515 in + 200 out | $0.000128 |
+| **LLM - Mistral** | OpenRouter | $0.0002/1K | $0.0006/1K | 515 in + 200 out | $0.000223 |
+| **TTS - Primary** | ElevenLabs | - | $0.30/1K chars | 150 chars × 3 | $0.135 |
+| **RAG Retrieval** | ChromaDB | - | Free | Local vectors | $0.00 |
+| **Embeddings** | Local | - | Free | Sentence transformers | $0.00 |
+
+#### **Updated Total Cost Per Query: ~$0.1397**
+
+### **Cost Per 1,000 Queries: $139.70**
+
+#### **Detailed Breakdown by Component:**
+- **Speech-to-Text (STT)**: $2.15 (1.5%)
+- **Multi-Model LLM**: $2.44 (1.8%)  
+  - Gemini: $2.09 (Input: $0.29, Output: $1.80)
+  - DeepSeek: $0.128 (Input: $0.072, Output: $0.056)  
+  - Mistral: $0.223 (Input: $0.103, Output: $0.120)
+- **Text-to-Speech (TTS)**: $135.00 (96.7%)
+- **RAG/Vector Search**: $0.00 (Free)
+
+#### **Token Cost Analysis:**
+- **System Prompts**: $0.465/1K queries (0.33% of total)
+- **User Input**: $0.145/1K queries (0.10% of total)  
+- **AI Output**: $1.83/1K queries (1.31% of total)
+- **Total LLM**: $2.44/1K queries (1.74% of total)
+
+#### **Input vs Output Token Ratio Impact:**
+```
+Input Tokens (System + Query): 515 × 3 models = 1,545 tokens
+Output Tokens (Responses): 200 × 3 models = 600 tokens
+Ratio: ~72% input, 28% output tokens per interaction
+```
+
+### **Cost Optimization Strategies:**
+
+#### **1. TTS Optimization (Biggest Cost Driver)**
+```python
+# Current: Generate TTS for all 3 models = $0.135/query
+# Optimized: Generate TTS only on-demand = $0.045/query
+# Savings: 67% reduction in TTS costs
+```
+
+#### **2. Tier-based Pricing Model**
+- **Free Tier**: Text-only responses (No TTS) = $0.0022/query
+- **Basic Tier**: Single-model + TTS = $0.0472/query  
+- **Premium Tier**: Multi-model + TTS = $0.1372/query
+
+#### **3. Alternative Pricing Scenarios**
+
+| Scenario | STT | LLM (Input+Output) | TTS | Total/1K |
+|----------|-----|-------------------|-----|----------|
+| **Text-Only Mode** | $0 | $2.44 | $0 | $2.44 |
+| **Single Model + Voice** | $2.15 | $2.09 | $45 | $49.24 |
+| **Current Multi-Model** | $2.15 | $2.44 | $135 | $139.59 |
+| **With Google TTS Fallback** | $2.15 | $2.44 | $20* | $24.59 |
+
+*Google TTS: ~$0.02/1K characters (15x cheaper than ElevenLabs)
+
+#### **Token Pricing Optimization Strategies:**
+
+```python
+# Current System Prompt Strategy:
+system_tokens = 500  # Long detailed instructions
+context_tokens = 15  # Retrieved RAG chunks per model
+query_tokens = 15    # User input
+total_input = 530 × 3 models = 1,590 tokens
+
+# Optimized Strategy:
+system_tokens = 200   # Concise instructions (-60%)
+context_tokens = 10   # Selective RAG retrieval (-33%)  
+query_tokens = 15     # Same user input
+total_input = 225 × 3 models = 675 tokens
+
+# Token Cost Reduction: 58% savings on input tokens
+# Overall LLM cost reduction: ~42% ($2.44 → $1.41 per 1K queries)
+```
+
+### **Monthly Usage Projections**
+
+| Users | Queries/Month | Monthly Cost | Annual Cost |
+|-------|---------------|--------------|-------------|
+| **10 users** | 1,000 | $139.70 | $1,676 |
+| **50 users** | 5,000 | $698.50 | $8,382 |
+| **100 users** | 10,000 | $1,397 | $16,764 |
+| **500 users** | 50,000 | $6,985 | $83,820 |
+
+
+### **Free Tier Limitations & Estimates**
+
+#### **Current Free Tier Usage (Before Hitting Limits)**:
+- **Gemini**: 15 requests/min = ~21,600/month (if sustained)
+- **DeepSeek/Mistral**: OpenRouter free credits (~$5-10/month)
+- **Deepgram**: $200 free credits = ~46,500 queries
+- **ElevenLabs**: 10K chars/month = ~67 queries with current usage
+
+#### **Realistic Free Tier Capacity**: **~65-70 queries/month**
+
+### **Scaling Recommendations**
+
+## 📊 System Assumptions & Limitations
+
+### **Technical Assumptions**
+
+#### **Voice Processing**:
+- **Audio Quality**: Clear speech in quiet environment
+- **Language**: English-only speech recognition optimized
+- **Duration**: 30-second max recording length per session
+- **Browser Support**: Modern browsers with WebRTC support
+
+#### **AI Model Performance**:
+- **Response Time**: Parallel processing reduces latency to ~3-5 seconds
+- **Context Window**: Limited by smallest model (typically 32K tokens)
+- **Memory**: Conversation history limited to session (no persistent user profiles)
+- **Accuracy**: Dependent on RAG knowledge base completeness
+
+#### **Infrastructure**:
+- **Internet Dependency**: Requires stable internet for all AI services
+- **Storage**: ChromaDB scales well to ~1M documents locally
+- **Concurrent Users**: Streamlit Community Cloud limits concurrent sessions
+- **Deployment**: Optimized for cloud deployment (Render, Heroku, etc.)
+
+### **System Limitations**
+
+#### **1. Voice Processing Constraints**
+```
+❌ No real-time streaming STT/TTS
+❌ Single language support (English only)
+❌ Browser-dependent audio quality
+❌ No noise cancellation or audio enhancement
+```
+
+#### **2. AI Model Limitations**
+```
+❌ No fine-tuning on Sunmarke-specific data
+❌ Knowledge cutoff dependent on each model
+❌ No custom model training or adaptation
+❌ Rate limits may cause temporary unavailability
+```
+
+#### **3. RAG System Constraints**
+```
+❌ Knowledge base requires manual updates
+❌ No real-time web scraping or content updates
+❌ Limited to pre-processed document chunks
+❌ No multi-modal content (images, videos) support
+```
+
+#### **4. Scalability Limitations**
+```
+❌ Single-server deployment (no load balancing)
+❌ No user authentication or personalization
+❌ No usage analytics or monitoring dashboard
+❌ No API endpoints for external integrations
+```
+
+### **Business Assumptions**
+
+#### **User Behavior**:
+- **Query Types**: Primarily informational about school services
+- **Session Length**: 3-5 queries per session average
+- **Peak Usage**: School hours and enrollment periods
+- **Technical Literacy**: Basic familiarity with voice interfaces
+
+#### **Content Management**:
+- **Update Frequency**: School information changes quarterly
+- **Content Accuracy**: Manual verification of RAG knowledge base
+- **Scope**: Limited to Sunmarke School information only
+- **Languages**: English content and queries only
+
+### **Future Enhancement Roadmap**
+
+#### **Short Term (Q1-Q2 2026)**:
+- [ ] Multi-language support (Arabic, French)
+- [ ] Real-time content updates via web scraping
+- [ ] Usage analytics and cost monitoring dashboard
+- [ ] Mobile app companion
+
+#### **Medium Term (Q3-Q4 2026)**:
+- [ ] Custom fine-tuned models for school-specific queries
+- [ ] User authentication and conversation persistence  
+- [ ] Integration with school management systems
+- [ ] Advanced voice features (emotion detection, speaker identification)
+
+#### **Long Term (2027+)**:
+- [ ] Multi-modal support (document upload, image analysis)
+- [ ] Predictive analytics for student queries
+- [ ] Integration with virtual reality school tours
+- [ ] AI-powered personalized learning recommendations
+
+---
+
+## �🐛 Troubleshooting
 
 ### Common Issues:
 
