@@ -45,6 +45,8 @@ class RAGRetriever:
     """Retrieve relevant context from ChromaDB"""
     
     def __init__(self, persist_directory: str = "./db/chromadb_store", collection_name: str = "sunmarke_content"):
+        from db.chroma_manager import ChromaManager
+        
         self.persist_directory = persist_directory
         self.collection_name = collection_name
         
@@ -52,15 +54,17 @@ class RAGRetriever:
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
         print("Model loaded!")
         
-        # Initialize ChromaDB client
-        self.client = chromadb.PersistentClient(
-            path=persist_directory,
-            settings=Settings(anonymized_telemetry=False)
-        )
+        # Initialize ChromaDB using ChromaManager
+        self.chroma_manager = ChromaManager(persist_directory, collection_name)
+        self.client = self.chroma_manager.client
+        self.collection = self.chroma_manager.collection
         
-        # Get collection
-        self.collection = self.client.get_collection(name=collection_name)
         print(f"Connected to ChromaDB collection: {collection_name}")
+        
+        # Auto-load data if collection is empty (for Render deployments)
+        self.chroma_manager.auto_load_if_empty()
+    
+
     
     def embed_query(self, query: str) -> List[float]:
         embedding = self.model.encode(query)

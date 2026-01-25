@@ -103,6 +103,53 @@ class ChromaManager:
             'persist_directory': self.persist_directory
         }
     
+    def is_empty(self) -> bool:
+        """Check if collection is empty"""
+        return self.collection.count() == 0
+    
+    def load_from_json(self, json_file_path: str) -> int:
+        """Load embedded chunks from JSON file into ChromaDB"""
+        print(f"📂 Loading embedded chunks from: {json_file_path}")
+        
+        with open(json_file_path, 'r', encoding='utf-8') as f:
+            chunks = json.load(f)
+        
+        print(f"✅ Loaded {len(chunks)} embedded chunks from JSON")
+        
+        # Add documents to ChromaDB
+        print("🔄 Adding documents to ChromaDB...")
+        total_added = self.add_documents(chunks)
+        
+        print(f"✅ Successfully added {total_added} documents to ChromaDB!")
+        return total_added
+    
+    def auto_load_if_empty(self, embedded_chunks_path: str = None) -> bool:
+        """Auto-load embedded chunks if collection is empty (for Render deployments)"""
+        if not self.is_empty():
+            print(f"ChromaDB has {self.collection.count()} documents")
+            return False
+        
+        print("ChromaDB is empty! Auto-loading embedded chunks...")
+        
+        # Default path for embedded chunks
+        if embedded_chunks_path is None:
+            from pathlib import Path
+            embedded_chunks_path = Path(__file__).parent.parent / "data" / "embedded_chunks" / "sunmarke_embedded.json"
+        
+        if not Path(embedded_chunks_path).exists():
+            print(f"ERROR: Embedded chunks file not found at {embedded_chunks_path}")
+            print(" ChromaDB will remain empty. Please ensure the file exists.")
+            return False
+        
+        try:
+            total_added = self.load_from_json(str(embedded_chunks_path))
+            print(f" Successfully auto-loaded {total_added} documents into ChromaDB!")
+            return True
+        except Exception as e:
+            print(f" ERROR auto-loading embedded chunks: {e}")
+            print("  ChromaDB will remain empty.")
+            return False
+    
     def reset_collection(self):
         """Delete and recreate collection (careful!)"""
         self.client.delete_collection(name=self.collection_name)
