@@ -64,111 +64,146 @@ streamlit run app.py
 
 ## 🏗️ System Architecture
 
-### High-Level Architecture Diagram
+### Enhanced Architecture Flow Diagram
 
 ```plantuml
-@startuml VirtualsVoiceAgent
-!theme plain
+@startuml Sunmarke Voice Agent - Enhanced Architecture Flow
 
-title Virtuans Voice Agent - System Architecture
+skinparam monochrome false
+skinparam shadowing true
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
 
-package "User Interface Layer" {
-  [Streamlit Web App] as WebApp
-  [Voice Input] as VoiceIn
-  [Text Input] as TextIn
-  [Audio Player] as AudioOut
+skinparam rectangle {
+    BackgroundColor #F8F9FA
+    BorderColor #212121
+    BorderThickness 3
+    FontStyle bold
 }
 
-package "Processing Layer" {
-  [Multi-Model LLM Handler] as LLMHandler
-  [RAG Retriever] as Retriever
-  [Speech-to-Text] as STT
-  [Text-to-Speech] as TTS
+skinparam component {
+    BackgroundColor #E3F2FD
+    BorderColor #1565C0
+    BorderThickness 2
+    FontSize 11
 }
 
-package "AI Models" {
-  [Gemini 2.5 Flash] as Gemini
-  [DeepSeek R1] as DeepSeek
-  [Mistral 7B] as Mistral
+skinparam database {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+    BorderThickness 3
+    FontStyle bold
 }
 
-package "Data Layer" {
-  [ChromaDB] as VectorDB
-  [Conversation Memory] as Memory
-  [Embedded Chunks] as Embeddings
+skinparam cloud {
+    BackgroundColor #E8F5E9
+    BorderColor #2E7D32
+    BorderThickness 3
+    FontStyle bold
 }
 
-package "Data Ingestion Pipeline" {
-  [HTML Scraper] as Scraper
-  [Content Chunker] as Chunker
-  [Embedding Generator] as EmbedGen
-  [ChromaDB Manager] as ChromaMgr
+' ====== PRESENTATION LAYER ======
+rectangle "**PRESENTATION LAYER**" #E3F2FD {
+    component "Streamlit UI\n(app.py)" as UI #BBDEFB
+    note right of UI : User Interface\n& Display
 }
 
-package "External APIs" {
-  [Google AI] as GoogleAPI
-  [OpenRouter] as OpenRouterAPI
-  [Deepgram] as DeepgramAPI
-  [ElevenLabs] as ElevenAPI
+' ====== APPLICATION LAYER ======
+rectangle "**APPLICATION LAYER**" #F3E5F5 {
+    component "Error Handler" as Error #D1C4E9
+    component "Session Manager" as Session #D1C4E9
+    component "Query Router" as Router #D1C4E9
 }
 
-package "Data Sources" {
-  [Sunmarke Website] as Website
-  [Local HTML Files] as HTMLFiles
+' ====== VOICE PROCESSING LAYER ======
+rectangle "**VOICE PROCESSING**" #FFF9C4 {
+    component "Deepgram STT" as STT #F0F4C3
+    component "ElevenLabs TTS" as TTS1 #F0F4C3
+    component "Google TTS\n(Fallback)" as TTS2 #FFCDD2
 }
 
-' User Flow
-WebApp --> VoiceIn
-WebApp --> TextIn
-WebApp --> AudioOut
+' ====== RAG LAYER ======
+rectangle "**RAG LAYER**" #E1F5FE {
+    component "LLM Handler\n(Multi-Model)" as LLM #B3E5FC
+    component "RAG Retriever" as RAG #B3E5FC
+    component "Prompt Templates" as Prompts #B3E5FC
+}
 
-VoiceIn --> STT
-TextIn --> LLMHandler
-STT --> LLMHandler
+' ====== EXTERNAL APIS ======
+cloud "**EXTERNAL APIs**" #E8F5E9 {
+    [Gemini API] #C8E6C9
+    [OpenRouter API] #C8E6C9
+    [Deepgram API] #C8E6C9
+    [ElevenLabs API] #C8E6C9
+}
 
-' Processing Flow
-LLMHandler --> Retriever
-LLMHandler --> Gemini
-LLMHandler --> DeepSeek  
-LLMHandler --> Mistral
+' ====== DATA STORAGE ======
+database "**DATA STORAGE**" #FFF3E0 {
+    database "ChromaDB\n(Vectors)" as ChromaDB #FFCCBC
+    database "Embedded Chunks\n(JSON)" as EmbeddedData #FFCCBC
+}
 
-Retriever --> VectorDB
-LLMHandler --> TTS
-TTS --> AudioOut
+' ====== MAIN USER FLOW - NUMBERED STEPS ======
 
-' Data Flow
-LLMHandler --> Memory
-Retriever --> Embeddings
+' Step 1: User Input
+UI -down-> Session : **[1]** User Query\n(Text/Voice)
+Session -down-> Router : **[2]** Route to\nProcessor
 
-' Ingestion Pipeline
-Website --> Scraper : wget mirror
-Scraper --> HTMLFiles
-HTMLFiles --> Chunker
-Chunker --> EmbedGen
-EmbedGen --> ChromaMgr
-ChromaMgr --> VectorDB
+' Step 2: Voice Processing
+Router -down-> STT : **[3]** Audio Input
+STT -right-> [Deepgram API] : **[3a]** Speech-to-Text\nTranscription
+STT -up-> Router : **[3b]** Text Output
 
-' API Connections
-STT --> DeepgramAPI
-TTS --> ElevenAPI
-Gemini --> GoogleAPI
-DeepSeek --> OpenRouterAPI
-Mistral --> OpenRouterAPI
+' Step 3: Query Processing  
+Router -down-> LLM : **[4]** Text Query
+LLM -down-> RAG : **[5]** Request\nContext
 
-' Memory Connection
-Memory --> VectorDB : Session Storage
+' Step 4: RAG Retrieval
+RAG -down-> Prompts : **[6]** Get Template
+RAG -down-> ChromaDB : **[7]** Vector\nSearch
+ChromaDB -up-> RAG : **[8]** Relevant\nChunks
+RAG -up-> LLM : **[9]** Context +\nPrompt
 
-note right of LLMHandler
-  Async parallel execution
-  Shared conversation memory
-  Response timing tracking
-end note
+' Step 5: LLM Processing (Multi-Model)
+LLM -right-> [Gemini API] : **[10a]** Generate\nResponse
+LLM -right-> [OpenRouter API] : **[10b]** DeepSeek +\nMistral
+[Gemini API] -left-> LLM : **[11a]** AI Response
+[OpenRouter API] -left-> LLM : **[11b]** AI Responses
 
-note bottom of VectorDB
-  Sentence Transformers
-  all-MiniLM-L6-v2
-  Persistent storage
-end note
+' Step 6: Text-to-Speech
+LLM -up-> TTS1 : **[12]** Generate\nAudio
+TTS1 -right-> [ElevenLabs API] : **[12a]** TTS Request
+[ElevenLabs API] -left-> TTS1 : **[12b]** Audio Stream
+
+' Step 7: Fallback Flow
+TTS1 -[#red,thickness=3]-> TTS2 : **[13]** <color:red>**FALLBACK**</color>\n<color:red>On Error/Limit</color>
+
+' Step 8: Return to User
+TTS1 -up-> Session : **[14]** Audio Response
+TTS2 -up-> Session : **[14b]** Backup Audio
+Session -up-> UI : **[15]** Display +\nPlay Audio
+UI -up-> UI : **[16]** User Experience
+
+' ====== DATA INITIALIZATION FLOW ======
+EmbeddedData .[#purple,thickness=3].> ChromaDB : **[INIT]** <color:purple>**Auto-Load on Startup**</color>\n<color:purple>if ChromaDB Empty</color>
+
+' ====== ERROR HANDLING FLOW ======
+Router -left-> Error : **[ERR]** Exception\nHandling
+Error -up-> Session : **[ERR]** User-Friendly\nMessages
+Session -[#orange,thickness=2]-> UI : **[ERR]** <color:orange>Error Display</color>
+
+' ====== MEMORY FLOW ======
+Session .[#blue,thickness=2].> LLM : <color:blue>**Conversation Memory**</color>\n<color:blue>Chat History</color>
+
+' ====== LEGEND ======
+legend right
+  |= Flow Type |= Description |
+  | **Main Flow** | Primary user interaction path |
+  | **<color:red>Fallback</color>** | Error recovery mechanisms |
+  | **<color:purple>Initialization</color>** | Startup data loading |
+  | **<color:orange>Error Flow</color>** | Exception handling |
+  | **<color:blue>Memory</color>** | Conversation context |
+endlegend
 
 @enduml
 ```
@@ -360,8 +395,8 @@ Pydantic-based configuration management with environment variable support.
 
 ### Voice Processing:
 - **deepgram-sdk**: Speech-to-text transcription
-- **elevenlabs**: Text-to-speech synthesis
-- **streamlit-audio-recorder**: Web audio recording
+- **elevenlabs**: Text-to-speech synthesis  
+- **audio-recorder-streamlit**: Web audio recording (v0.0.8 - stable)
 
 ### Data Processing:
 - **beautifulsoup4**: HTML parsing and web scraping
@@ -391,6 +426,11 @@ Conversation Memory ←← Context + Sources + Timing + Audio
 ---
 
 ## 🛠️ Development
+
+### Recent Improvements (January 2026):
+- **Stability Fix**: Downgraded `audio-recorder-streamlit` from v0.0.10 to v0.0.8
+- **Issue Resolved**: Fixed "Failed to fetch dynamically imported module" error on Render deployments
+- **Performance**: Enhanced cloud deployment compatibility for voice processing
 
 ### Adding New Models:
 1. Add model initialization in `rag/llm_handler.py`
@@ -461,6 +501,7 @@ python data_ingestion/embeddings.py
 - Check browser microphone permissions
 - Try refreshing the page
 - Ensure HTTPS if deployed (required for audio)
+- **Fixed**: Updated to audio-recorder-streamlit v0.0.8 for better cloud compatibility
 
 **API rate limits**
 - Gemini: Wait 1 minute between requests
