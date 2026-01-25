@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: sunmarke-voice-agent
+    env: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: CHROMA_PERSIST_DIRECTORY
+        value: /app/db/chromadb_store
+      - key: CHROMA_COLLECTION_NAME
+        value: sunmarke_content
+      - key: APP_ENV
+        value: production
+    healthCheckPath: /_stcore/health
+    autoDeploy: true
