@@ -109,18 +109,18 @@ class ChromaManager:
     
     def load_from_json(self, json_file_path: str) -> int:
         """Load embedded chunks from JSON file into ChromaDB"""
-        print(f"📂 Loading embedded chunks from: {json_file_path}")
+        print(f"Loading embedded chunks from: {json_file_path}")
         
         with open(json_file_path, 'r', encoding='utf-8') as f:
             chunks = json.load(f)
         
-        print(f"✅ Loaded {len(chunks)} embedded chunks from JSON")
+        print(f"Loaded {len(chunks)} embedded chunks from JSON")
         
         # Add documents to ChromaDB
-        print("🔄 Adding documents to ChromaDB...")
+        print("Adding documents to ChromaDB...")
         total_added = self.add_documents(chunks)
         
-        print(f"✅ Successfully added {total_added} documents to ChromaDB!")
+        print(f"uccessfully added {total_added} documents to ChromaDB!")
         return total_added
     
     def auto_load_if_empty(self, embedded_chunks_path: str = None) -> bool:
@@ -157,15 +157,13 @@ class ChromaManager:
             name=self.collection_name,
             metadata={"description": "Sunmarke School content embeddings"}
         )
-        print(f"⚠️  Collection '{self.collection_name}' reset!")
+        print(f"Collection '{self.collection_name}' reset!")
 
 
 if __name__ == "__main__":
     import time
     
-    print("=" * 60)
     print("STEP 4: CHROMADB STORAGE")
-    print("=" * 60)
     
     # Load embedded chunks
     input_file = Path('data/embedded_chunks/sunmarke_embedded.json')
