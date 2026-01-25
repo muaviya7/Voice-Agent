@@ -432,7 +432,7 @@ def main():
     # Footer
     st.divider()
     st.caption(
-        "Powered by Gemini • ChromaDB • Sentence Transformers"
+        "Powered by Gemini • ChromaDB • Google Embeddings API"
     )
 
 

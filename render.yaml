@@ -1,10 +1,14 @@
 services:
   - type: web
     name: sunmarke-voice-agent
-    env: docker
+    env: python
     region: oregon
     plan: starter
-    dockerfilePath: ./Dockerfile
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false
+    buildFilter:
+      paths:
+        - "!sunmarke/**"
     envVars:
       - key: GOOGLE_API_KEY
         sync: false
