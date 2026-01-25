@@ -1,6 +1,6 @@
 """
 Embedding generation for vector storage
-Generates embeddings using OpenAI or Sentence Transformers
+Generates embeddings using Google Gemini API
 """
 import sys
 from pathlib import Path

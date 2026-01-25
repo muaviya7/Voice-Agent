@@ -5,7 +5,6 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sentence_transformers import SentenceTransformer
 from typing import List, Dict
 import chromadb
 from chromadb.config import Settings
