@@ -9,6 +9,7 @@ openai==1.57.0
 langchain==0.2.16
 langchain-core==0.2.43
 langchain-community==0.2.16
+langchain-classic==1.0.1
 langchain-google-genai==1.0.10
 langchain-openai==0.1.25
 chromadb==0.5.5
