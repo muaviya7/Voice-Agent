@@ -6,10 +6,10 @@ deepgram-sdk==5.3.1
 elevenlabs==2.31.0
 gTTS==2.5.4
 
-google-generativeai==0.8.6
+# IMPORTANT: must stay <0.8.0 for langchain-google-genai==1.0.10
+google-generativeai==0.7.2
 openai==2.15.0
 
-# Use compatible LangChain family (fixes your conflict)
 langchain==0.2.16
 langchain-core==0.2.43
 langchain-community==0.2.16
